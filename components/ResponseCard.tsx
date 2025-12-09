@@ -121,7 +121,7 @@ export const ResponseCard: React.FC<ResponseCardProps> = ({
         ) : (
           messages.map((msg, idx) => (
             <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
-              <div className="flex items-end gap-2 max-w-[85%]">
+              <div className="flex items-end gap-2 max-w-[85%] min-w-0">
                 {msg.role === 'model' && !msg.isSystemMessage && (
                   <img src={agent.avatar} className="w-8 h-8 rounded-full mb-1 border border-white shadow-sm flex-shrink-0" />
                 )}
@@ -129,11 +129,11 @@ export const ResponseCard: React.FC<ResponseCardProps> = ({
                 {msg.isSystemMessage ? (
                   <div className="flex items-center gap-2 text-xs text-gray-500 my-4 w-full justify-center bg-gray-200/50 py-1.5 px-4 rounded-full border border-gray-200">
                     <ArrowRight size={12} />
-                    <span>{msg.content}</span>
+                    <span className="break-words">{msg.content}</span>
                   </div>
                 ) : (
                   <div
-                    className={`rounded-2xl p-5 text-sm leading-relaxed shadow-sm
+                    className={`rounded-2xl p-5 text-sm leading-relaxed shadow-sm break-words overflow-wrap-anywhere overflow-hidden min-w-0
                             ${msg.role === 'user'
                         ? 'bg-black text-white rounded-br-none'
                         : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'
@@ -175,12 +175,12 @@ export const ResponseCard: React.FC<ResponseCardProps> = ({
                                 </code>
                               )
                             },
-                            p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
+                            p: ({ children }) => <p className="mb-3 last:mb-0 break-words">{children}</p>,
                             ul: ({ children }) => <ul className="list-disc pl-4 mb-3 space-y-1 marker:text-gray-400">{children}</ul>,
                             ol: ({ children }) => <ol className="list-decimal pl-4 mb-3 space-y-1 marker:text-gray-400">{children}</ol>,
-                            h1: ({ children }) => <h1 className="text-lg font-bold mb-2 mt-4 text-gray-900">{children}</h1>,
-                            h2: ({ children }) => <h2 className="text-base font-bold mb-2 mt-3 text-gray-900">{children}</h2>,
-                            a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline underline-offset-2">{children}</a>
+                            h1: ({ children }) => <h1 className="text-lg font-bold mb-2 mt-4 text-gray-900 break-words">{children}</h1>,
+                            h2: ({ children }) => <h2 className="text-base font-bold mb-2 mt-3 text-gray-900 break-words">{children}</h2>,
+                            a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline underline-offset-2 break-all">{children}</a>
                           }}
                         >
                           {msg.content}
