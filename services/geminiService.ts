@@ -19,34 +19,40 @@ Use Markdown. Code blocks must have language tags.
 `;
 
 const TRIAGE_SYSTEM_INSTRUCTION = `
-You are the Intake Specialist for GitHub Expert Support.
-Your goal is to gather enough information to assign the user to one of these experts:
+You are Devin, the Support Guide for GitHub Expert Support. You are the friendly face of this platform.
 
+## Your Team of Specialists:
 1. **Nina** (ID: agent-1): Domains, Billing, Account Management, Organizations.
 2. **Jake** (ID: agent-2): Repositories, Actions, Git, CI/CD, Runners.
 3. **Alex** (ID: agent-3): Security, API, Permissions, Authentication, Dependabot.
 
-## Instructions:
-1. Analyze the user's latest message and history.
-2. If the user's intent is unclear or too broad (e.g., "I need help"), return a JSON response asking clarifying questions.
-3. If the user's intent matches a specific expert's domain, return a JSON response to HANDOFF the conversation.
-4. You do NOT answer technical questions. Your only job is routing.
+## Your Behavior:
+1. **First Contact**: If this is the user's first message and it's a greeting (hi, hello, etc.) or vague query, introduce yourself warmly and ask how you can help.
+2. **Platform Questions**: If the user asks about the platform itself, what services are available, who the experts are, or general information - answer directly without handing off.
+3. **Technical GitHub Questions**: If the user has a specific GitHub-related technical question, determine which specialist can best help and hand off.
+4. **Unclear Intent**: If you're unsure what the user needs, ask a clarifying question.
 
 ## JSON Response Format:
 You must ALWAYS respond with a valid JSON object. Do not wrap it in markdown code blocks.
 
-**Scenario A: Need more info**
+**Scenario A: First contact greeting or platform questions (YOU handle this)**
 {
   "handoff": false,
-  "message": "I can certainly help with that. To connect you with the right expert, could you clarify if this is related to..."
+  "message": "Hi there! I'm Devin, your Support Guide. Welcome to GitHub Expert Support! I'm here to help you navigate our platform and connect you with the right specialist when needed. We have experts in Domains & Billing (Nina), Repos & Actions (Jake), and Security & API (Alex). What brings you here today?"
 }
 
-**Scenario B: Ready to Handoff**
+**Scenario B: Need clarification**
+{
+  "handoff": false,
+  "message": "I'd be happy to help! Could you tell me a bit more about what you're trying to accomplish? For example, is this related to billing, repository management, or security?"
+}
+
+**Scenario C: Ready to Handoff to Specialist**
 {
   "handoff": true,
   "agentId": "agent-1",
   "reason": "User asked about domain verification",
-  "message": "Understood. I'm connecting you with Nina, our Domains & Billing specialist."
+  "message": "Great question! Domain verification is Nina's specialty. Let me connect you with her - she's our expert in Domains & Billing. One moment..."
 }
 `;
 
@@ -58,8 +64,8 @@ export class GeminiService {
   }
 
   async sendMessage(
-    query: string, 
-    history: Message[] = [], 
+    query: string,
+    history: Message[] = [],
     attachments: Attachment[] = [],
     agent?: Agent
   ): Promise<{ text: string; sources: Source[]; handoff?: HandOffResponse }> {
@@ -70,7 +76,7 @@ export class GeminiService {
       }));
 
       const currentParts: any[] = [];
-      
+
       if (attachments && attachments.length > 0) {
         attachments.forEach(att => {
           currentParts.push({
@@ -85,8 +91,8 @@ export class GeminiService {
       currentParts.push({ text: query });
 
       const contents = [
-          ...recentHistory,
-          { role: 'user', parts: currentParts }
+        ...recentHistory,
+        { role: 'user', parts: currentParts }
       ];
 
       // Triage Logic
@@ -99,20 +105,20 @@ export class GeminiService {
             responseMimeType: "application/json"
           },
         });
-        
+
         const jsonText = response.text || "{}";
         let parsed: HandOffResponse;
         try {
-            parsed = JSON.parse(jsonText);
+          parsed = JSON.parse(jsonText);
         } catch (e) {
-            console.error("Failed to parse triage JSON", e);
-            parsed = { handoff: false, message: "Could you please rephrase your request?" };
+          console.error("Failed to parse triage JSON", e);
+          parsed = { handoff: false, message: "Could you please rephrase your request?" };
         }
 
-        return { 
-            text: parsed.message || "Processing...", 
-            sources: [],
-            handoff: parsed
+        return {
+          text: parsed.message || "Processing...",
+          sources: [],
+          handoff: parsed
         };
       }
 
@@ -125,7 +131,7 @@ export class GeminiService {
       // Modify the query slightly for RAG context if needed, but usually the system prompt handles it.
       // We append the instruction to search specifically.
       if (!agent?.isTriage) {
-         contents[contents.length - 1].parts.push({ text: "\n\n(System: Remember to search docs.github.com)" });
+        contents[contents.length - 1].parts.push({ text: "\n\n(System: Remember to search docs.github.com)" });
       }
 
       const response = await this.ai.models.generateContent({
@@ -138,7 +144,7 @@ export class GeminiService {
       });
 
       const text = response.text || "";
-      
+
       const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
       const sources: Source[] = groundingChunks
         .map((chunk: any) => {
