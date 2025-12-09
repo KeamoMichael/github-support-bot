@@ -21,14 +21,14 @@ export const SessionList: React.FC<SessionListProps> = ({ sessions, agents, acti
   );
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Tabs */}
       <div className="flex gap-2 mb-6 bg-gray-200/50 p-1 rounded-full w-fit">
         <button
           onClick={() => setActiveTab('active')}
           className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${activeTab === 'active'
-              ? 'bg-white text-black shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
+            ? 'bg-white text-black shadow-sm'
+            : 'text-gray-500 hover:text-gray-700'
             }`}
         >
           Active ({sessions.filter(s => s.isActive).length})
@@ -36,8 +36,8 @@ export const SessionList: React.FC<SessionListProps> = ({ sessions, agents, acti
         <button
           onClick={() => setActiveTab('history')}
           className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${activeTab === 'history'
-              ? 'bg-white text-black shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
+            ? 'bg-white text-black shadow-sm'
+            : 'text-gray-500 hover:text-gray-700'
             }`}
         >
           History

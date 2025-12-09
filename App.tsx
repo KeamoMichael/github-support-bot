@@ -85,32 +85,7 @@ const MOCK_FAQS: FAQItem[] = [
   { question: "Deploy to GitHub Pages", category: "Actions" }
 ];
 
-const MOCK_SESSIONS: Session[] = [
-  {
-    id: 'sess-1',
-    agentId: 'agent-2',
-    title: 'Node.js CI Pipeline Error',
-    lastMessage: 'The workflow file needs a matrix strategy...',
-    timestamp: new Date(Date.now() - 1000 * 60 * 30),
-    isActive: true
-  },
-  {
-    id: 'sess-2',
-    agentId: 'agent-1',
-    title: 'Billing Inquiry',
-    lastMessage: 'Thanks for clarifying the seat cost.',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24),
-    isActive: false
-  },
-  {
-    id: 'sess-3',
-    agentId: 'agent-3',
-    title: 'API Rate Limits',
-    lastMessage: 'Check the x-ratelimit-remaining header.',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48),
-    isActive: false
-  }
-];
+// Sessions are created dynamically when specialists connect
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('Live Support');
@@ -124,8 +99,9 @@ const App: React.FC = () => {
   const [pendingAgent, setPendingAgent] = useState<Agent | null>(null);
   const [pendingUserQuery, setPendingUserQuery] = useState<string>('');
 
-  const [sessions, setSessions] = useState<Session[]>(MOCK_SESSIONS);
+  const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | undefined>();
+  const [currentSessionId, setCurrentSessionId] = useState<string | undefined>();
 
   // Initialize hooks
   const { playConnected, playDisconnected } = useChatSounds();
@@ -133,6 +109,17 @@ const App: React.FC = () => {
   // Handle session end
   const handleSessionEnd = useCallback(() => {
     playDisconnected();
+
+    // Mark current session as inactive (move to history)
+    if (currentSessionId) {
+      setSessions(prev => prev.map(s =>
+        s.id === currentSessionId
+          ? { ...s, isActive: false, lastMessage: 'Session ended' }
+          : s
+      ));
+      setCurrentSessionId(undefined);
+    }
+
     const endMessage: Message = {
       role: 'model',
       content: 'Session ended due to inactivity. Feel free to start a new conversation!',
@@ -141,7 +128,7 @@ const App: React.FC = () => {
     };
     setMessages(prev => [...prev, endMessage]);
     setSelectedAgent(TRIAGE_AGENT);
-  }, [playDisconnected]);
+  }, [playDisconnected, currentSessionId]);
 
   // Idle timeout - only active when talking to a specialist
   const {
@@ -263,6 +250,25 @@ const App: React.FC = () => {
     setSelectedAgent(pendingAgent);
     playConnected(); // Play connection sound
 
+    // Create a new session for this specialist connection
+    const newSessionId = `sess-${Date.now()}`;
+    const sessionTitle = pendingUserQuery.length > 40
+      ? pendingUserQuery.substring(0, 40) + '...'
+      : pendingUserQuery || 'New Conversation';
+
+    const newSession: Session = {
+      id: newSessionId,
+      agentId: pendingAgent.id,
+      title: sessionTitle,
+      lastMessage: `Connected to ${pendingAgent.name}`,
+      timestamp: new Date(),
+      isActive: true
+    };
+
+    setSessions(prev => [newSession, ...prev]);
+    setCurrentSessionId(newSessionId);
+    setActiveSessionId(newSessionId);
+
     // Now fetch the specialist's greeting
     setIsLoading(true);
     try {
@@ -276,6 +282,13 @@ const App: React.FC = () => {
         sources: specialistResponse.sources
       };
       setMessages(prev => [...prev, expertMessage]);
+
+      // Update session with first message
+      setSessions(prev => prev.map(s =>
+        s.id === newSessionId
+          ? { ...s, lastMessage: specialistResponse.text.substring(0, 50) + '...' }
+          : s
+      ));
     } catch (error) {
       console.error("Failed to get specialist greeting", error);
     } finally {

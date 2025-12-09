@@ -102,8 +102,8 @@ export const ResponseCard: React.FC<ResponseCardProps> = ({
         </div>
       </div>
 
-      {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto p-8 space-y-6 scroll-smooth custom-scrollbar" ref={scrollRef}>
+      {/* Chat Area - min-h-0 allows flex child to shrink and scroll properly */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-8 space-y-6 scroll-smooth custom-scrollbar" ref={scrollRef}>
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-gray-400 animate-in fade-in duration-700">
             <div className={`w-24 h-24 rounded-full bg-white flex items-center justify-center mb-6 shadow-sm ring-4 ring-gray-100 ${agent.isTriage ? 'p-4' : ''}`}>
