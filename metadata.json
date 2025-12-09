@@ -1,0 +1,5 @@
+{
+  "name": "GitHub Live Expert Support Bot",
+  "description": "A RAG-powered expert support bot for GitHub documentation, featuring a modern monochrome dashboard interface.",
+  "requestFramePermissions": []
+}
