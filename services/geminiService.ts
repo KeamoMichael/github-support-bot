@@ -159,10 +159,92 @@ export class GeminiService {
 
       return { text, sources: uniqueSources };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Gemini API Error:", error);
+
+      // Check if this is a rate limit error
+      const isRateLimitError = this.isRateLimitError(error);
+
+      if (isRateLimitError) {
+        const rateLimitInfo = this.parseRateLimitError(error);
+        // Throw a structured rate limit error
+        const rateLimitError = new Error(rateLimitInfo.message);
+        (rateLimitError as any).rateLimitInfo = rateLimitInfo;
+        throw rateLimitError;
+      }
+
       throw error;
     }
+  }
+
+  private isRateLimitError(error: any): boolean {
+    // Check for 429 status code or quota-related error messages
+    if (error?.status === 429) return true;
+
+    const errorMessage = error?.message?.toLowerCase() || '';
+    const errorString = JSON.stringify(error).toLowerCase();
+
+    return (
+      errorMessage.includes('quota') ||
+      errorMessage.includes('rate limit') ||
+      errorMessage.includes('resource has been exhausted') ||
+      errorMessage.includes('too many requests') ||
+      errorString.includes('quota') ||
+      errorString.includes('rate limit')
+    );
+  }
+
+  private parseRateLimitError(error: any): import('../types').RateLimitError {
+    const errorMessage = error?.message || error?.toString() || 'Rate limit exceeded';
+    let limitType: 'RPM' | 'TPM' | 'RPD' | 'UNKNOWN' = 'UNKNOWN';
+    let retryAfterSeconds: number | undefined;
+    let resetTime: Date | undefined;
+
+    // Try to determine limit type from error message
+    const msgLower = errorMessage.toLowerCase();
+    if (msgLower.includes('minute') || msgLower.includes('rpm')) {
+      limitType = 'RPM';
+      retryAfterSeconds = 60; // Reset after 1 minute
+    } else if (msgLower.includes('tpm') || msgLower.includes('token')) {
+      limitType = 'TPM';
+      retryAfterSeconds = 60; // Reset after 1 minute
+    } else if (msgLower.includes('day') || msgLower.includes('daily') || msgLower.includes('rpd')) {
+      limitType = 'RPD';
+      // Calculate seconds until next day UTC
+      const now = new Date();
+      const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0));
+      retryAfterSeconds = Math.floor((tomorrow.getTime() - now.getTime()) / 1000);
+    }
+
+    // Check for retry-after header (if available in error object)
+    if (error?.headers?.['retry-after']) {
+      retryAfterSeconds = parseInt(error.headers['retry-after'], 10);
+    }
+
+    // Calculate reset time
+    if (retryAfterSeconds) {
+      resetTime = new Date(Date.now() + retryAfterSeconds * 1000);
+    }
+
+    // Create user-friendly message
+    let friendlyMessage = 'API rate limit exceeded. ';
+    if (limitType === 'RPM') {
+      friendlyMessage += 'You\'ve sent too many requests per minute. Please wait a moment.';
+    } else if (limitType === 'TPM') {
+      friendlyMessage += 'Token usage limit reached. Please wait a moment.';
+    } else if (limitType === 'RPD') {
+      friendlyMessage += 'Daily request limit reached. You can resume tomorrow.';
+    } else {
+      friendlyMessage += 'Please try again later.';
+    }
+
+    return {
+      isRateLimitError: true,
+      limitType,
+      resetTime,
+      retryAfterSeconds,
+      message: friendlyMessage
+    };
   }
 }
 

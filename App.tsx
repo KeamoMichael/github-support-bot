@@ -8,7 +8,7 @@ import { FAQGrid } from './components/FAQGrid';
 import { ConnectingOverlay } from './components/ConnectingOverlay';
 import { IdleWarningModal } from './components/IdleWarningModal';
 import { DisconnectOverlay } from './components/DisconnectOverlay';
-import { Message, Agent, Session, FAQItem, Attachment } from './types';
+import { Message, Agent, Session, FAQItem, Attachment, RateLimitState } from './types';
 import { geminiService } from './services/geminiService';
 import { useChatSounds } from './hooks/useChatSounds';
 import { useIdleTimeout } from './hooks/useIdleTimeout';
@@ -114,6 +114,11 @@ const App: React.FC = () => {
   const [showDisconnectOverlay, setShowDisconnectOverlay] = useState(false);
   const [disconnectedAgent, setDisconnectedAgent] = useState<Agent | null>(null);
 
+  // State for rate limiting
+  const [rateLimitState, setRateLimitState] = useState<RateLimitState>({
+    isLimited: false
+  });
+
   // Initialize hooks
   const { playConnected, playDisconnected } = useChatSounds();
 
@@ -176,6 +181,11 @@ const App: React.FC = () => {
   const handleSendMessage = async (text: string, files: File[] = []) => {
     if (!text.trim() && files.length === 0) return;
 
+    // Check if currently rate limited
+    if (rateLimitState.isLimited) {
+      return; // Silently prevent sending if rate limited
+    }
+
     // Ensure we switch to live support if sending from FAQ
     if (activeTab !== 'Live Support') setActiveTab('Live Support');
 
@@ -234,14 +244,34 @@ const App: React.FC = () => {
         resetTimer(); // Reset idle timer on any activity
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to send message", error);
-      const errorMessage: Message = {
-        role: 'model',
-        content: "I'm sorry, I encountered an error. Please try again.",
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
+
+      // Check if this is a rate limit error
+      if (error?.rateLimitInfo) {
+        const rateLimitInfo = error.rateLimitInfo;
+        setRateLimitState({
+          isLimited: true,
+          limitType: rateLimitInfo.limitType,
+          resetTime: rateLimitInfo.resetTime,
+          message: rateLimitInfo.message
+        });
+
+        // Set up auto-reset when limit expires
+        if (rateLimitInfo.retryAfterSeconds) {
+          setTimeout(() => {
+            setRateLimitState({ isLimited: false });
+          }, rateLimitInfo.retryAfterSeconds * 1000);
+        }
+      } else {
+        // Regular error message
+        const errorMessage: Message = {
+          role: 'model',
+          content: "I'm sorry, I encountered an error. Please try again.",
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -335,6 +365,7 @@ const App: React.FC = () => {
                 onSend={handleSendMessage}
                 inputText={inputText}
                 setInputText={setInputText}
+                rateLimitState={rateLimitState}
               />
             </div>
             <div className="xl:col-span-4 flex flex-col h-full bg-[#F5F5F5] rounded-[2.5rem] p-6 shadow-inner border border-white">

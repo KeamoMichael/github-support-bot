@@ -1,7 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Message, Agent } from '../types';
+import { Message, Agent, RateLimitState } from '../types';
 import { Loader2, Send, Paperclip, X, ArrowRight } from 'lucide-react';
+import { RateLimitNotification } from './RateLimitNotification';
 
 interface ResponseCardProps {
   agent: Agent;
@@ -10,6 +11,7 @@ interface ResponseCardProps {
   onSend: (message: string, files: File[]) => void;
   inputText: string;
   setInputText: (text: string) => void;
+  rateLimitState: RateLimitState;
 }
 
 export const ResponseCard: React.FC<ResponseCardProps> = ({
@@ -18,7 +20,8 @@ export const ResponseCard: React.FC<ResponseCardProps> = ({
   isLoading,
   onSend,
   inputText,
-  setInputText
+  setInputText,
+  rateLimitState
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -67,7 +70,7 @@ export const ResponseCard: React.FC<ResponseCardProps> = ({
     }
   };
 
-  const isSendReady = (inputText.trim().length > 0 || selectedFiles.length > 0) && !isLoading;
+  const isSendReady = (inputText.trim().length > 0 || selectedFiles.length > 0) && !isLoading && !rateLimitState.isLimited;
 
   return (
     <div className="relative overflow-hidden rounded-[2.5rem] bg-[#F5F5F5] text-gray-800 shadow-inner border border-white h-full flex flex-col transition-all duration-500">
@@ -211,6 +214,9 @@ export const ResponseCard: React.FC<ResponseCardProps> = ({
             </div>
           </div>
         )}
+
+        {/* Rate Limit Notification */}
+        <RateLimitNotification rateLimitState={rateLimitState} />
       </div>
 
       {/* Input Area - Rounded at bottom to match container */}
@@ -255,9 +261,16 @@ export const ResponseCard: React.FC<ResponseCardProps> = ({
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={agent.isTriage ? "Describe your issue (e.g. 'I need help with billing')..." : `Ask ${agent.name} about ${agent.description.split(',')[0]}...`}
-              className="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 rounded-full py-3.5 pl-6 pr-14 focus:outline-none focus:ring-2 focus:ring-black/5 focus:bg-white transition-all text-sm shadow-inner"
-              disabled={isLoading}
+              placeholder={
+                rateLimitState.isLimited
+                  ? "Rate limit reached - please wait..."
+                  : agent.isTriage
+                    ? "Describe your issue (e.g. 'I need help with billing')..."
+                    : `Ask ${agent.name} about ${agent.description.split(',')[0]}...`
+              }
+              className={`w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 rounded-full py-3.5 pl-6 pr-14 focus:outline-none focus:ring-2 focus:ring-black/5 focus:bg-white transition-all text-sm shadow-inner ${rateLimitState.isLimited ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              disabled={isLoading || rateLimitState.isLimited}
             />
             <button
               onClick={handleSend}

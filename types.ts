@@ -62,3 +62,18 @@ export interface HandOffResponse {
   message?: string;
   reason?: string;
 }
+
+export interface RateLimitError {
+  isRateLimitError: boolean;
+  limitType: 'RPM' | 'TPM' | 'RPD' | 'UNKNOWN';
+  resetTime?: Date;
+  retryAfterSeconds?: number;
+  message: string;
+}
+
+export interface RateLimitState {
+  isLimited: boolean;
+  limitType?: 'RPM' | 'TPM' | 'RPD' | 'UNKNOWN';
+  resetTime?: Date;
+  message?: string;
+}

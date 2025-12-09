@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Word-Wrap Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .overflow-wrap-anywhere {
+            overflow-wrap: anywhere;
+            word-wrap: anywhere;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-2xl font-bold mb-6">Chat Window Word-Wrap Test</h1>
+
+        <!-- Simulated chat container with grid layout like the real app -->
+        <div class="grid grid-cols-12 gap-4 h-[600px]">
+            <!-- Chat area (8 columns) -->
+            <div class="col-span-8 bg-white rounded-3xl p-6 overflow-y-auto">
+                <h2 class="font-bold mb-4">Chat Messages</h2>
+
+                <!-- User message -->
+                <div class="flex flex-col items-end mb-4">
+                    <div class="flex items-end gap-2 max-w-[85%] min-w-0">
+                        <div
+                            class="rounded-2xl p-5 text-sm leading-relaxed shadow-sm break-words overflow-wrap-anywhere overflow-hidden min-w-0 bg-black text-white rounded-br-none">
+                            i need help with connecting my custom domain to github... mgh now it is showing the red DNS
+                            error message below the custom domain field inside the 'pages' tab
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bot response with very long text and URLs -->
+                <div class="flex flex-col items-start mb-4">
+                    <div class="flex items-end gap-2 max-w-[85%] min-w-0">
+                        <div
+                            class="rounded-2xl p-5 text-sm leading-relaxed shadow-sm break-words overflow-wrap-anywhere overflow-hidden min-w-0 bg-white text-gray-800 border border-gray-100 rounded-bl-none">
+                            <p class="mb-3 break-words">Hello! I understand you're having trouble. The DNS error
+                                typically indicates one of these issues:</p>
+                            <ol class="list-decimal pl-4 mb-3 space-y-1">
+                                <li>DNS records not configured correctly</li>
+                                <li>The 'ref DNS' error message indicates that GitHub Pages cannot verify your domain's
+                                    DNS records at this time. Here's what you should check:</li>
+                                <li>Very long URLs like:
+                                    https://thisisaverylongurlthatshouldbreakatsomelocationinthechatbubbleotherwisethelayoutwillbreak.com/api/v1/dns/verify
+                                </li>
+                            </ol>
+                            <p class="mb-3 break-words">The most frequent reason for this error is the SEC_DNS records
+                                don't match what GitHub expects. You usually need to add these specific DNS records: A
+                                records pointing to 185.199.108.153, 185.199.109.153, 185.199.110.153, 185.199.111.153
+                            </p>
+                            <p class="mb-3 break-words">Code blocks with long content:</p>
+                            <code
+                                class="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono text-pink-600 font-semibold break-all">very-long-custom-domain-name-that-should-wrap-properly.github.io</code>
+                            <p class="mb-3 break-words">Links: <a href="https://verylongexampleurlforbreaktesting.com"
+                                    class="text-blue-600 hover:text-blue-500 underline underline-offset-2 break-all">https://verylongexampleurlforbreaktesting.com/documentation/github-pages/dns-configuration-tutorial</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Sessions panel (4 columns) -->
+            <div class="col-span-4 bg-gray-50 rounded-3xl p-6">
+                <h2 class="font-bold mb-4">Active Sessions</h2>
+                <p class="text-sm text-gray-500">This panel should stay in its position</p>
+            </div>
+        </div>
+
+        <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded">
+            <p class="text-sm"><strong>Test Verification:</strong></p>
+            <ul class="text-sm list-disc pl-5 mt-2">
+                <li>Chat messages should wrap within their bubbles</li>
+                <li>Long URLs should break and wrap</li>
+                <li>Active Sessions panel should stay in its 4-column area</li>
+                <li>No horizontal scrolling should occur</li>
+            </ul>
+        </div>
+    </div>
+</body>
+
+</html>
