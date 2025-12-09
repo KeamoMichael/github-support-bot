@@ -7,6 +7,7 @@ import { SessionList } from './components/SessionList';
 import { FAQGrid } from './components/FAQGrid';
 import { ConnectingOverlay } from './components/ConnectingOverlay';
 import { IdleWarningModal } from './components/IdleWarningModal';
+import { DisconnectOverlay } from './components/DisconnectOverlay';
 import { Message, Agent, Session, FAQItem, Attachment } from './types';
 import { geminiService } from './services/geminiService';
 import { useChatSounds } from './hooks/useChatSounds';
@@ -21,7 +22,9 @@ const SPECIALIST_AGENTS: Agent[] = [
     description: 'accounts, billing, and domain configuration',
     avatar: 'https://avatar.iran.liara.run/public/girl?username=Nina',
     color: 'from-pink-500 to-purple-500',
-    systemPrompt: 'You are Nina, a cheerful and precise expert in GitHub billing, account management, organizations, and domain verification. You focus on administrative tasks. You MUST introduce yourself first, stating your name and expertise. Then, end your first message with the exact phrase: "How can I help you today?".'
+    systemPrompt: `You are Nina, a cheerful and precise expert in GitHub billing, account management, organizations, and domain verification.
+
+IMPORTANT: You only introduce yourself ONCE when a conversation starts (when you receive a [SYSTEM: You have just been assigned...] message). After that initial greeting, you should NEVER re-introduce yourself. Just answer questions directly and helpfully.`
   },
   {
     id: 'agent-2',
@@ -30,7 +33,9 @@ const SPECIALIST_AGENTS: Agent[] = [
     description: 'repositories, git operations, and CI/CD pipelines',
     avatar: 'https://avatar.iran.liara.run/public/boy?username=Jake',
     color: 'from-blue-500 to-cyan-500',
-    systemPrompt: 'You are Jake, a technical expert in Git, GitHub Actions, Runners, and repository management. You love optimizing workflows and solving merge conflicts. You MUST introduce yourself first, stating your name and expertise. Then, end your first message with the exact phrase: "How can I help you today?".'
+    systemPrompt: `You are Jake, a technical expert in Git, GitHub Actions, Runners, and repository management. You love optimizing workflows and solving merge conflicts.
+
+IMPORTANT: You only introduce yourself ONCE when a conversation starts (when you receive a [SYSTEM: You have just been assigned...] message). After that initial greeting, you should NEVER re-introduce yourself. Just answer questions directly and helpfully.`
   },
   {
     id: 'agent-3',
@@ -39,7 +44,9 @@ const SPECIALIST_AGENTS: Agent[] = [
     description: 'security features, API integration, and permissions',
     avatar: 'https://avatar.iran.liara.run/public/boy?username=Alex',
     color: 'from-green-500 to-emerald-500',
-    systemPrompt: 'You are Alex, a security-focused expert in GitHub Advanced Security, Dependabot, Secret scanning, and the REST/GraphQL APIs. You prioritize safety and best practices. You MUST introduce yourself first, stating your name and expertise. Then, end your first message with the exact phrase: "How can I help you today?".'
+    systemPrompt: `You are Alex, a security-focused expert in GitHub Advanced Security, Dependabot, Secret scanning, and the REST/GraphQL APIs. You prioritize safety and best practices.
+
+IMPORTANT: You only introduce yourself ONCE when a conversation starts (when you receive a [SYSTEM: You have just been assigned...] message). After that initial greeting, you should NEVER re-introduce yourself. Just answer questions directly and helpfully.`
   }
 ];
 
@@ -48,7 +55,7 @@ const TRIAGE_AGENT: Agent = {
   name: 'Devin',
   role: 'Support Guide',
   description: 'welcoming users and guiding them to the right expert',
-  avatar: '/assets/github-logo-black.png',
+  avatar: '/github-logo-black.png',
   color: 'from-gray-800 to-gray-900',
   systemPrompt: `You are Devin, the Support Guide for GitHub Expert Support. You are the friendly face of this platform - think of yourself as a concierge who helps users navigate and get the support they need.
 
@@ -103,12 +110,22 @@ const App: React.FC = () => {
   const [activeSessionId, setActiveSessionId] = useState<string | undefined>();
   const [currentSessionId, setCurrentSessionId] = useState<string | undefined>();
 
+  // State for disconnect overlay
+  const [showDisconnectOverlay, setShowDisconnectOverlay] = useState(false);
+  const [disconnectedAgent, setDisconnectedAgent] = useState<Agent | null>(null);
+
   // Initialize hooks
   const { playConnected, playDisconnected } = useChatSounds();
 
   // Handle session end
   const handleSessionEnd = useCallback(() => {
     playDisconnected();
+
+    // Capture the agent who is disconnecting for the overlay
+    if (!selectedAgent.isTriage) {
+      setDisconnectedAgent(selectedAgent);
+      setShowDisconnectOverlay(true);
+    }
 
     // Mark current session as inactive (move to history)
     if (currentSessionId) {
@@ -128,7 +145,7 @@ const App: React.FC = () => {
     };
     setMessages(prev => [...prev, endMessage]);
     setSelectedAgent(TRIAGE_AGENT);
-  }, [playDisconnected, currentSessionId]);
+  }, [playDisconnected, currentSessionId, selectedAgent]);
 
   // Idle timeout - only active when talking to a specialist
   const {
@@ -387,6 +404,16 @@ const App: React.FC = () => {
         timeRemaining={formatTimeRemaining()}
         onContinue={dismissWarning}
         onEndSession={handleEndSession}
+      />
+
+      {/* Disconnect Overlay - shown when session times out */}
+      <DisconnectOverlay
+        isVisible={showDisconnectOverlay}
+        agent={disconnectedAgent}
+        onDismiss={() => {
+          setShowDisconnectOverlay(false);
+          setDisconnectedAgent(null);
+        }}
       />
     </div>
   );
