@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rate Limit Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6">Rate Limit Notification Test</h1>
+
+        <div class="bg-white rounded-2xl p-6 mb-6 shadow-lg">
+            <h2 class="text-xl font-bold mb-4">Test Scenarios</h2>
+            <div class="space-y-3">
+                <button onclick="testRPM()"
+                    class="px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 font-bold w-full">
+                    Test RPM Limit (1 minute)
+                </button>
+                <button onclick="testTPM()"
+                    class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-bold w-full">
+                    Test TPM Limit (1 minute)
+                </button>
+                <button onclick="testRPD()"
+                    class="px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 font-bold w-full">
+                    Test RPD Limit (Daily)
+                </button>
+                <button onclick="testUnknown()"
+                    class="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 font-bold w-full">
+                    Test Unknown Limit
+                </button>
+            </div>
+        </div>
+
+        <div id="notification-area" class="mb-6">
+            <!-- Notification will be rendered here -->
+        </div>
+
+        <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 text-sm">
+            <p class="font-bold mb-2">Expected Behavior:</p>
+            <ul class="list-disc pl-5 space-y-1">
+                <li><strong>RPM/TPM:</strong> Shows 1-minute countdown with yellow/blue theme</li>
+                <li><strong>RPD:</strong> Shows time until midnight UTC with red theme and "Upgrade" button</li>
+                <li><strong>Unknown:</strong> Shows gray theme with generic message</li>
+                <li>Countdown timer should update every second</li>
+                <li>After countdown reaches 0, notification should show "Ready to resume"</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Simulate the RateLimitNotification component logic
+        let currentInterval = null;
+
+        function renderNotification(limitType, resetTime, message) {
+            // Clear any existing interval
+            if (currentInterval) {
+                clearInterval(currentInterval);
+            }
+
+            const getIconAndColor = () => {
+                switch (limitType) {
+                    case 'RPD':
+                        return {
+                            color: 'from-red-500 to-orange-500',
+                            bgColor: 'bg-red-50',
+                            textColor: 'text-red-700',
+                            borderColor: 'border-red-200',
+                            label: 'Daily Limit Reached'
+                        };
+                    case 'RPM':
+                        return {
+                            color: 'from-yellow-500 to-orange-500',
+                            bgColor: 'bg-yellow-50',
+                            textColor: 'text-yellow-700',
+                            borderColor: 'border-yellow-200',
+                            label: 'Rate Limit (Per Minute)'
+                        };
+                    case 'TPM':
+                        return {
+                            color: 'from-blue-500 to-cyan-500',
+                            bgColor: 'bg-blue-50',
+                            textColor: 'text-blue-700',
+                            borderColor: 'border-blue-200',
+                            label: 'Token Limit (Per Minute)'
+                        };
+                    default:
+                        return {
+                            color: 'from-gray-500 to-gray-600',
+                            bgColor: 'bg-gray-50',
+                            textColor: 'text-gray-700',
+                            borderColor: 'border-gray-200',
+                            label: 'Rate Limit Reached'
+                        };
+                }
+            };
+
+            const style = getIconAndColor();
+
+            function updateCountdown() {
+                const now = new Date().getTime();
+                const resetTimeMs = new Date(resetTime).getTime();
+                const diff = resetTimeMs - now;
+
+                let timeRemaining;
+                if (diff <= 0) {
+                    timeRemaining = 'Ready to resume';
+                    if (currentInterval) clearInterval(currentInterval);
+                } else {
+                    const hours = Math.floor(diff / (1000 * 60 * 60));
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+                    if (hours > 0) {
+                        timeRemaining = `${hours}h ${minutes}m ${seconds}s`;
+                    } else if (minutes > 0) {
+                        timeRemaining = `${minutes}m ${seconds}s`;
+                    } else {
+                        timeRemaining = `${seconds}s`;
+                    }
+                }
+
+                const html = `
+                    <div class="${style.bgColor} ${style.borderColor} border-2 rounded-2xl p-6 animate-in fade-in">
+                        <div class="flex items-start gap-4">
+                            <div class="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br ${style.color} flex items-center justify-center shadow-lg">
+                                <svg class="text-white" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
+                                    <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="text-lg font-bold ${style.textColor}">
+                                        ${style.label}
+                                    </h3>
+                                    <div class="px-3 py-1 rounded-full ${style.bgColor} border ${style.borderColor} font-mono text-sm font-bold ${style.textColor}">
+                                        ${timeRemaining}
+                                    </div>
+                                </div>
+                                <p class="text-gray-700 leading-relaxed mb-3">
+                                    ${message}
+                                </p>
+                                ${limitType === 'RPD' ? `
+                                    <div class="mt-4 pt-4 border-t border-gray-200">
+                                        <p class="text-sm text-gray-600 mb-2">
+                                            <strong>Daily limit exceeded.</strong> To continue using the service today, consider upgrading your API plan.
+                                        </p>
+                                        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer"
+                                           class="inline-block px-4 py-2 bg-gradient-to-r ${style.color} text-white rounded-full text-sm font-bold hover:shadow-lg transition-all duration-200">
+                                            Upgrade API Plan
+                                        </a>
+                                    </div>
+                                ` : ''}
+                                ${limitType === 'RPM' || limitType === 'TPM' ? `
+                                    <div class="mt-3 text-sm text-gray-600">
+                                        💡 <strong>Tip:</strong> You can send your next message in ${timeRemaining}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('notification-area').innerHTML = html;
+            }
+
+            updateCountdown();
+            currentInterval = setInterval(updateCountdown, 1000);
+        }
+
+        function testRPM() {
+            const resetTime = new Date(Date.now() + 60 * 1000); // 1 minute from now
+            renderNotification('RPM', resetTime, "You've sent too many requests per minute. Please wait a moment.");
+        }
+
+        function testTPM() {
+            const resetTime = new Date(Date.now() + 60 * 1000); // 1 minute from now
+            renderNotification('TPM', resetTime, "Token usage limit reached. Please wait a moment.");
+        }
+
+        function testRPD() {
+            const now = new Date();
+            const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0));
+            renderNotification('RPD', tomorrow, "Daily request limit reached. You can resume tomorrow.");
+        }
+
+        function testUnknown() {
+            const resetTime = new Date(Date.now() + 30 * 1000); // 30 seconds from now
+            renderNotification('UNKNOWN', resetTime, "API rate limit exceeded. Please try again later.");
+        }
+    </script>
+</body>
+
+</html>
