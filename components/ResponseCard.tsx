@@ -213,8 +213,8 @@ export const ResponseCard: React.FC<ResponseCardProps> = ({
         )}
       </div>
 
-      {/* Input Area */}
-      <div className="p-5 bg-white border-t border-gray-200">
+      {/* Input Area - Rounded at bottom to match container */}
+      <div className="p-5 bg-white border-t border-gray-200 rounded-b-[2.5rem]">
         {/* Preview Area */}
         {previews.length > 0 && (
           <div className="flex gap-3 mb-4 overflow-x-auto pb-2 scrollbar-none">
