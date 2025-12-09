@@ -63,6 +63,16 @@ export class GeminiService {
     this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
 
+  /**
+   * Check if using a free API key (Google AI Studio free tier)
+   * Rate limit tracking only applies to free keys
+   */
+  private isUsingFreeApiKey(): boolean {
+    const apiKeyType = process.env.API_KEY_TYPE?.toLowerCase();
+    // Default to 'paid' if not specified (safer to assume no rate limiting)
+    return apiKeyType === 'free';
+  }
+
   async sendMessage(
     query: string,
     history: Message[] = [],
@@ -162,15 +172,17 @@ export class GeminiService {
     } catch (error: any) {
       console.error("Gemini API Error:", error);
 
-      // Check if this is a rate limit error
-      const isRateLimitError = this.isRateLimitError(error);
+      // Only apply rate limit handling for free API keys
+      if (this.isUsingFreeApiKey()) {
+        const isRateLimitError = this.isRateLimitError(error);
 
-      if (isRateLimitError) {
-        const rateLimitInfo = this.parseRateLimitError(error);
-        // Throw a structured rate limit error
-        const rateLimitError = new Error(rateLimitInfo.message);
-        (rateLimitError as any).rateLimitInfo = rateLimitInfo;
-        throw rateLimitError;
+        if (isRateLimitError) {
+          const rateLimitInfo = this.parseRateLimitError(error);
+          // Throw a structured rate limit error
+          const rateLimitError = new Error(rateLimitInfo.message);
+          (rateLimitError as any).rateLimitInfo = rateLimitInfo;
+          throw rateLimitError;
+        }
       }
 
       throw error;
